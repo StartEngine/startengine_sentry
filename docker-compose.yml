@@ -18,7 +18,7 @@ x-sentry-defaults: &sentry_defaults
   <<: *restart_policy
   image: sentry-self-hosted-local
   # Set the platform to build for linux/arm64 when needed on Apple silicon Macs.
-  platform: ${DOCKER_PLATFORM:-}
+  platform: linux/arm64
   build:
     context: ./sentry
     args:
@@ -103,6 +103,7 @@ services:
   smtp:
     <<: *restart_policy
     image: tianon/exim4
+    platform: linux/arm64
     hostname: "${SENTRY_MAIL_HOST:-}"
     volumes:
       - "sentry-smtp:/var/spool/exim4"
@@ -173,10 +174,10 @@ services:
       - "sentry-secrets:/etc/zookeeper/secrets"
     healthcheck:
       <<: *healthcheck_defaults
-      test:
-        ["CMD-SHELL", 'echo "ruok" | nc -w 2 localhost 2181 | grep imok']
+      test: ["CMD-SHELL", 'echo "ruok" | nc -w 2 localhost 2181 | grep imok']
   kafka:
     <<: *restart_policy
+    platform: linux/arm64
     depends_on:
       zookeeper:
         <<: *depends_on-healthy
@@ -203,7 +204,11 @@ services:
       - "sentry-secrets:/etc/kafka/secrets"
     healthcheck:
       <<: *healthcheck_defaults
-      test: ["CMD-SHELL", "/usr/bin/kafka-topics --bootstrap-server kafka:9092 --list"]
+      test:
+        [
+          "CMD-SHELL",
+          "/usr/bin/kafka-topics --bootstrap-server kafka:9092 --list",
+        ]
       interval: 10s
       timeout: 10s
       retries: 30
@@ -246,7 +251,8 @@ services:
     # Override the entrypoint in order to avoid using envvars for config.
     # Futz with settings so we can keep mmdb and conf in same dir on host
     # (image looks for them in separate dirs by default).
-    entrypoint: ["/usr/bin/geoipupdate", "-d", "/sentry", "-f", "/sentry/GeoIP.conf"]
+    entrypoint:
+      ["/usr/bin/geoipupdate", "-d", "/sentry", "-f", "/sentry/GeoIP.conf"]
     volumes:
       - "./geoip:/sentry"
   snuba-api:
